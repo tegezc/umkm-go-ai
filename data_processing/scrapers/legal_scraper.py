@@ -89,7 +89,6 @@ def download_and_extract_text(pdf_url: str) -> str | None:
         for page_num in range(len(pdf_document)):
             page = pdf_document.load_page(page_num)
             full_text += page.get_text()
-            full_text += "\n--- End of Page ---\n"
             
         print(f"[+] Text extracted from all {len(pdf_document)} pages.")
         return full_text

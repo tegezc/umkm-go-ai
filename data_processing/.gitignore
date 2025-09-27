@@ -63,5 +63,6 @@ Thumbs.db
 # dotenv
 *.env
 .env.*
+
 # ignore output folder
 output/
