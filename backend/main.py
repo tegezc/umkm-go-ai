@@ -2,6 +2,7 @@
 # Description: Main entry point that assembles the application from different agent routers.
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 # Import the router modules
 from app.api.v1 import agent_legal, agent_marketing
@@ -11,6 +12,14 @@ app = FastAPI(
     title="UMKM-Go AI Backend",
     description="API for the UMKM-Go AI multi-agent system.",
     version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # --- Health Check Endpoint ---
