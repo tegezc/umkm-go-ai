@@ -1,8 +1,10 @@
 // File: mobile_app/lib/data/services/api_service.dart
 
 import 'dart:convert';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
 class ApiService {
   static String get _baseUrl {
@@ -64,6 +66,39 @@ class ApiService {
       }
     } catch (e) {
       print('Error in askMarketingAgent: $e');
+      throw Exception('Failed to connect to the server: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> analyzeSalesData(PlatformFile file) async {
+    final url = Uri.parse('$_baseUrl/operational/analyze');
+
+    try {
+      // Membuat multipart request, yang dibutuhkan untuk file upload
+      var request = http.MultipartRequest('POST', url);
+
+      // Menambahkan file ke request
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file', // Nama field ini ('file') harus cocok dengan di backend FastAPI
+          file.bytes!,
+          filename: file.name,
+          contentType: MediaType('text', 'csv'),
+        ),
+      );
+
+      print("Sending file '${file.name}' to operational agent...");
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        return json.decode(utf8.decode(response.bodyBytes));
+      } else {
+        final errorBody = json.decode(utf8.decode(response.bodyBytes));
+        throw Exception('Failed to analyze data. Status: ${response.statusCode}, Detail: ${errorBody['detail']}');
+      }
+    } catch (e) {
+      print('Error in analyzeSalesData: $e');
       throw Exception('Failed to connect to the server: $e');
     }
   }

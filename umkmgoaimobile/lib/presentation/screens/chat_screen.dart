@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../../data/services/api_service.dart';
+import 'package:file_picker/file_picker.dart';
 
 // A simple class to hold message data
 class ChatMessage {
@@ -58,6 +59,54 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _pickAndAnalyzeFile() async {
+    setState(() { _isLoading = true; });
+
+    try {
+      // Buka dialog pemilih file, batasi hanya untuk CSV
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+      );
+
+      if (result != null && result.files.single.bytes != null) {
+        final file = result.files.single;
+
+        // Beri feedback langsung ke UI
+        setState(() {
+          _messages.add(ChatMessage(text: "Menganalisis file: ${file.name}...", isUser: true));
+        });
+
+        // Panggil ApiService
+        final response = await _apiService.analyzeSalesData(file);
+
+        final String insights = response['insights'] ?? "No insights found.";
+        // Kita bisa format statistik untuk ditampilkan juga
+        final Map<String, dynamic> stats = response['statistics'] ?? {};
+        final String formattedStats =
+            "Total Pendapatan: ${stats['total_revenue']?.toStringAsFixed(0) ?? 'N/A'}\\n"
+            "Produk Terlaris (Jumlah): ${stats['best_selling_by_quantity']?['name'] ?? 'N/A'}\\n"
+            "Produk Pendapatan Tertinggi: ${stats['highest_revenue_product']?['name'] ?? 'N/A'}";
+
+        final String finalAnswer = "$insights\\n\\n--- Ringkasan Statistik ---\\n$formattedStats";
+
+        setState(() {
+          _messages.add(ChatMessage(text: finalAnswer, isUser: false));
+        });
+
+      } else {
+        // Pengguna membatalkan pemilihan file
+        print("File picking cancelled.");
+      }
+    } catch (e) {
+      setState(() {
+        _messages.add(ChatMessage(text: "Error saat menganalisis file: ${e.toString()}", isUser: false));
+      });
+    } finally {
+      setState(() { _isLoading = false; });
     }
   }
 
@@ -130,6 +179,10 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       child: Row(
         children: [
+          IconButton(
+            icon: const Icon(Icons.attach_file, color: Colors.grey),
+            onPressed: _isLoading ? null : _pickAndAnalyzeFile,
+          ),
           Expanded(
             child: TextField(
               controller: _textController,
