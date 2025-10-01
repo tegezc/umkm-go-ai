@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import the router modules
-from app.api.v1 import agent_legal, agent_marketing
+from app.api.v1 import agent_legal, agent_marketing, agent_operational
 
 # --- FastAPI App Initialization ---
 app = FastAPI(
@@ -37,6 +37,12 @@ app.include_router(
     agent_marketing.router,
     prefix="/api/v1/agent/marketing",
     tags=["Marketing Agent"],
+)
+
+app.include_router(
+    agent_operational.router,
+    prefix="/api/v1/agent/operational",
+    tags=["Operational Agent"],
 )
 
 print("[+] Application assembled with all agent routers.")
