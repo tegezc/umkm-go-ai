@@ -38,27 +38,39 @@ class _ChatScreenState extends State<ChatScreen> {
     _textController.clear();
 
     try {
-      // For now, we'll hardcode to call the Legal Agent
-      // In the future, we can add a switch/tab to select an agent.
-      final response = await _apiService.askLegalAgent(query);
+      // Selalu panggil orkestrator untuk query teks
+      final response = await _apiService.askOrchestrator(query);
 
-      final String answer = response['answer'] ?? "No answer found.";
+      final String agentUsed = response['agent_used'] ?? 'UNKNOWN';
+      String finalAnswer = "";
 
-      // Add AI response to the list
+      // Logika untuk memformat jawaban berdasarkan agen yang digunakan
+      if (agentUsed == "LEGAL") {
+        finalAnswer = response['answer'] ?? "No answer found.";
+        final List<dynamic> chunks = response['retrieved_chunks'] ?? [];
+        if (chunks.isNotEmpty) {
+          finalAnswer += "\\n\\n--- Sumber Dokumen ---";
+          for (var chunk in chunks.take(2)) { // Tampilkan 2 sumber teratas
+            finalAnswer += "\\n- ${chunk['chunk_id']} (${chunk['chapter_title']})";
+          }
+        }
+      } else if (agentUsed == "MARKETING") {
+        finalAnswer = response['answer'] ?? "No answer found.";
+        // Di sini kita bisa menambahkan logika untuk menampilkan sumber artikel jika perlu
+      } else { // UNKNOWN
+        finalAnswer = response['answer'] ?? "Maaf, terjadi kesalahan.";
+      }
+
       setState(() {
-        _messages.add(ChatMessage(text: answer, isUser: false));
+        _messages.add(ChatMessage(text: finalAnswer, isUser: false));
       });
 
     } catch (e) {
-      // Handle errors
       setState(() {
         _messages.add(ChatMessage(text: "Error: ${e.toString()}", isUser: false));
       });
     } finally {
-      // Stop loading indicator
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() { _isLoading = false; });
     }
   }
 

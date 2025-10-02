@@ -1,11 +1,11 @@
-# File: backend/main.py (v2 - Refactored with APIRouter)
+# File: backend/main.py (v3 - Refactored with APIRouter)
 # Description: Main entry point that assembles the application from different agent routers.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Import the router modules
-from app.api.v1 import agent_legal, agent_marketing, agent_operational
+from app.api.v1 import agent_legal, agent_marketing, agent_operational, orchestrator
 
 # --- FastAPI App Initialization ---
 app = FastAPI(
@@ -43,6 +43,12 @@ app.include_router(
     agent_operational.router,
     prefix="/api/v1/agent/operational",
     tags=["Operational Agent"],
+)
+
+app.include_router(
+    orchestrator.router,
+    prefix="/api/v1/orchestrator",
+    tags=["Orchestrator"],
 )
 
 print("[+] Application assembled with all agent routers.")
