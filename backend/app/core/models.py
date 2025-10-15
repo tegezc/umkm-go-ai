@@ -12,7 +12,7 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '..', '.en
 
 # --- Configuration ---
 GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID")
-GCP_LOCATION = os.getenv("GCP_LOCATION", "asia-southeast1")
+GCP_LOCATION = os.getenv("GCP_LOCATION", "asia-southeast2")
 EMBEDDING_MODEL_NAME = 'paraphrase-multilingual-MiniLM-L12-v2'
 
 # --- Initialization ---
@@ -23,7 +23,8 @@ vertexai.init(project=GCP_PROJECT_ID, location=GCP_LOCATION)
 print("[+] CORE: Vertex AI initialized.")
 
 print(f"[*] CORE: Loading embedding model: '{EMBEDDING_MODEL_NAME}'...")
-embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+# embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+embedding_model = SentenceTransformer('/app/embedding_model_files')
 print("[+] CORE: Embedding model loaded.")
 
 print("[*] CORE: Loading Gemini model...")

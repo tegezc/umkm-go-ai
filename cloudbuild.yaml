@@ -1,0 +1,18 @@
+steps:
+# Step 1: Build the container image
+- name: 'gcr.io/cloud-builders/docker'
+  args: 
+    - 'build'
+    - '-t'
+    - 'asia-southeast2-docker.pkg.dev/hackathon-460016/umkm-go-ai-repo/api-server:v1'
+    - '.'
+    - '-f'
+    - 'Dockerfile'
+  dir: 'backend'
+
+# Step 2: Push the container image to Artifact Registry
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'asia-southeast2-docker.pkg.dev/hackathon-460016/umkm-go-ai-repo/api-server:v1']
+
+images:
+- 'asia-southeast2-docker.pkg.dev/hackathon-460016/umkm-go-ai-repo/api-server:v1'

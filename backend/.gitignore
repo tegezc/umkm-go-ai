@@ -63,3 +63,5 @@ Thumbs.db
 # dotenv
 *.env
 .env.*
+
+embedding_model_files/

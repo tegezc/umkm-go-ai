@@ -1,0 +1,34 @@
+# File: .gcloudignore
+# Description: Specifies files and directories to ignore when uploading to Google Cloud.
+
+# Python virtual environment folders
+.env/
+env/
+venv/
+.venv/
+
+# Python bytecode and caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE and editor configuration files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS-specific files
+.DS_Store
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Git directory
+.git/
+
+# Local data outputs. We don't need to upload our scraped data.
+data_processing/output/
