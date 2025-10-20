@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import '../../data/services/api_service.dart';
 import 'package:file_picker/file_picker.dart';
+import '../../data/services/notification_service.dart';
 
 // A simple class to hold message data
 class ChatMessage {
@@ -24,6 +25,15 @@ class _ChatScreenState extends State<ChatScreen> {
   final ApiService _apiService = ApiService();
   final List<ChatMessage> _messages = [];
   bool _isLoading = false;
+
+  final NotificationService _notificationService = NotificationService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Call the notification initialization method when the screen is first built
+    _notificationService.initNotifications();
+  }
 
   // --- Core Logic ---
   Future<void> _sendMessage() async {

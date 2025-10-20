@@ -2,20 +2,12 @@
 
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
 class ApiService {
-  static String get _baseUrl {
-    if (kIsWeb) {
-      // Jika berjalan di web (Chrome, etc.)
-      return "http://localhost:8000/api/v1";
-    } else {
-      // Jika berjalan di mobile (asumsi Emulator Android)
-      return "http://10.0.2.2:8000/api/v1";
-    }
-  }
+  static const String _baseUrl =
+      "https://umkm-go-ai-api-102863217534.asia-southeast1.run.app/api/v1";
 
   Future<Map<String, dynamic>> askOrchestrator(String query) async {
     final url = Uri.parse('$_baseUrl/orchestrator/query');
@@ -24,24 +16,22 @@ class ApiService {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'query': query,
-          'user_id': 'flutter_client_01',
-        }),
+        body: json.encode({'query': query, 'user_id': 'flutter_client_01'}),
       );
 
       if (response.statusCode == 200) {
         return json.decode(utf8.decode(response.bodyBytes));
       } else {
         final errorBody = json.decode(utf8.decode(response.bodyBytes));
-        throw Exception('Orchestrator failed. Status: ${response.statusCode}, Detail: ${errorBody['detail']}');
+        throw Exception(
+          'Orchestrator failed. Status: ${response.statusCode}, Detail: ${errorBody['detail']}',
+        );
       }
     } catch (e) {
       print('Error in askOrchestrator: $e');
       throw Exception('Failed to connect to the server: $e');
     }
   }
-
 
   // Fungsi untuk bertanya ke Agen Legalitas
   Future<Map<String, dynamic>> askLegalAgent(String query) async {
@@ -51,10 +41,7 @@ class ApiService {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'query': query,
-          'user_id': 'flutter_client_01',
-        }),
+        body: json.encode({'query': query, 'user_id': 'flutter_client_01'}),
       );
 
       if (response.statusCode == 200) {
@@ -62,7 +49,9 @@ class ApiService {
         return json.decode(utf8.decode(response.bodyBytes));
       } else {
         // Jika server mengembalikan error, lempar exception.
-        throw Exception('Failed to get answer from Legal Agent. Status code: ${response.statusCode}');
+        throw Exception(
+          'Failed to get answer from Legal Agent. Status code: ${response.statusCode}',
+        );
       }
     } catch (e) {
       // Menangani error koneksi atau lainnya.
@@ -79,16 +68,15 @@ class ApiService {
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: json.encode({
-          'query': query,
-          'user_id': 'flutter_client_01',
-        }),
+        body: json.encode({'query': query, 'user_id': 'flutter_client_01'}),
       );
 
       if (response.statusCode == 200) {
         return json.decode(utf8.decode(response.bodyBytes));
       } else {
-        throw Exception('Failed to get answer from Marketing Agent. Status code: ${response.statusCode}');
+        throw Exception(
+          'Failed to get answer from Marketing Agent. Status code: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('Error in askMarketingAgent: $e');
@@ -97,7 +85,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> analyzeSalesData(PlatformFile file) async {
-    final url = Uri.parse('$_baseUrl/operational/analyze');
+    final url = Uri.parse('$_baseUrl/agent/operational/analyze');
 
     try {
       // Membuat multipart request, yang dibutuhkan untuk file upload
@@ -121,7 +109,9 @@ class ApiService {
         return json.decode(utf8.decode(response.bodyBytes));
       } else {
         final errorBody = json.decode(utf8.decode(response.bodyBytes));
-        throw Exception('Failed to analyze data. Status: ${response.statusCode}, Detail: ${errorBody['detail']}');
+        throw Exception(
+          'Failed to analyze data. Status: ${response.statusCode}, Detail: ${errorBody['detail']}',
+        );
       }
     } catch (e) {
       print('Error in analyzeSalesData: $e');

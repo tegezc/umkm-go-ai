@@ -5,6 +5,19 @@ from pydantic import BaseModel
 import requests
 import xml.etree.ElementTree as ET
 
+import firebase_admin
+from firebase_admin import credentials, messaging
+
+try:
+    # The SDK will automatically find the credentials via the GOOGLE_APPLICATION_CREDENTIALS env var.
+    cred = credentials.ApplicationDefault() 
+    firebase_admin.initialize_app(cred)
+    print("[+] Firebase Admin SDK initialized successfully.")
+except Exception as e:
+    print(f"[!] Failed to initialize Firebase Admin SDK: {e}")
+    # In a real app, you might want to handle this more gracefully
+    # For the hackathon, a print statement is fine.
+
 class OpportunityInfo(BaseModel):
     source: str
     title: str
@@ -71,4 +84,38 @@ async def scan_news_for_opportunities():
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {e}")
 
     print(f"[*] Scan finished. Found {len(found_opportunities)} relevant opportunities.")
+    
+     # Send FCM Notification if opportunities are found ---
+    if found_opportunities:
+        print("[*] Preparing to send FCM notification...")
+        
+        # In the next step, we will get this token from the Flutter app.
+        # For now, we will find a test token.
+        registration_token = "cvuewHfRQGmF9R7QcN1BKK:APA91bFmiE1xtSjwihS_TI4jsCwO1llq7LIzABc8MuSoMJf1Q8DFaVf55xCRrf37jKsEUMGQG1tExRHfqkBUeO2jb4ac1hcWgJY0CjQWaHFIsxugwiKEBqw"
+
+        # Take the first opportunity as the notification content
+        first_opportunity = found_opportunities[0]
+        
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title=f"💡 Peluang Baru untuk Bisnis Anda!",
+                body=f"{first_opportunity.title[:100]}..." # Truncate for brevity
+            ),
+            # You can also send custom data to your app
+            data={
+                "link": first_opportunity.link,
+                "source": first_opportunity.source
+            },
+            token=registration_token,
+        )
+
+        try:
+            # Send the message
+            response = messaging.send(message)
+            print('[+] Successfully sent message:', response)
+        except Exception as e:
+            print(f"[!] Error sending FCM message: {e}")
+            # We don't raise an HTTPException here because the core task (scraping) was successful.
+            # We just log the notification failure.
+
     return OpportunityScanResponse(status="success", found_opportunities=found_opportunities)
