@@ -1,167 +1,67 @@
 // File: mobile_app/lib/presentation/screens/chat_screen.dart
 
 import 'package:flutter/material.dart';
-import '../../data/services/api_service.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:file_picker/file_picker.dart';
-import '../../data/services/notification_service.dart';
+import '../../data/services/api_service.dart';
+import '../../bloc/chat/chat_bloc.dart';
 
-// A simple class to hold message data
-class ChatMessage {
-  final String text;
-  final bool isUser;
-
-  ChatMessage({required this.text, required this.isUser});
-}
-
-class ChatScreen extends StatefulWidget {
+class ChatScreen extends StatelessWidget {
   const ChatScreen({super.key});
 
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
-}
-
-class _ChatScreenState extends State<ChatScreen> {
-  final TextEditingController _textController = TextEditingController();
-  final ApiService _apiService = ApiService();
-  final List<ChatMessage> _messages = [];
-  bool _isLoading = false;
-
-  final NotificationService _notificationService = NotificationService();
-
-  @override
-  void initState() {
-    super.initState();
-    // Call the notification initialization method when the screen is first built
-    _notificationService.initNotifications();
-  }
-
-  // --- Core Logic ---
-  Future<void> _sendMessage() async {
-    final String query = _textController.text;
-    if (query.isEmpty) return;
-
-    // Add user message to the list
-    setState(() {
-      _messages.add(ChatMessage(text: query, isUser: true));
-      _isLoading = true;
-    });
-    _textController.clear();
-
-    try {
-      // Selalu panggil orkestrator untuk query teks
-      final response = await _apiService.askOrchestrator(query);
-
-      final String agentUsed = response['agent_used'] ?? 'UNKNOWN';
-      String finalAnswer = "";
-
-      // Logika untuk memformat jawaban berdasarkan agen yang digunakan
-      if (agentUsed == "LEGAL") {
-        finalAnswer = response['answer'] ?? "No answer found.";
-        final List<dynamic> chunks = response['retrieved_chunks'] ?? [];
-        if (chunks.isNotEmpty) {
-          finalAnswer += "\\n\\n--- Sumber Dokumen ---";
-          for (var chunk in chunks.take(2)) { // Tampilkan 2 sumber teratas
-            finalAnswer += "\\n- ${chunk['chunk_id']} (${chunk['chapter_title']})";
-          }
-        }
-      } else if (agentUsed == "MARKETING") {
-        finalAnswer = response['answer'] ?? "No answer found.";
-        // Di sini kita bisa menambahkan logika untuk menampilkan sumber artikel jika perlu
-      } else { // UNKNOWN
-        finalAnswer = response['answer'] ?? "Maaf, terjadi kesalahan.";
-      }
-
-      setState(() {
-        _messages.add(ChatMessage(text: finalAnswer, isUser: false));
-      });
-
-    } catch (e) {
-      setState(() {
-        _messages.add(ChatMessage(text: "Error: ${e.toString()}", isUser: false));
-      });
-    } finally {
-      setState(() { _isLoading = false; });
-    }
-  }
-
-  Future<void> _pickAndAnalyzeFile() async {
-    setState(() { _isLoading = true; });
-
-    try {
-      // Buka dialog pemilih file, batasi hanya untuk CSV
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['csv'],
-      );
-
-      if (result != null && result.files.single.bytes != null) {
-        final file = result.files.single;
-
-        // Beri feedback langsung ke UI
-        setState(() {
-          _messages.add(ChatMessage(text: "Menganalisis file: ${file.name}...", isUser: true));
-        });
-
-        // Panggil ApiService
-        final response = await _apiService.analyzeSalesData(file);
-
-        final String insights = response['insights'] ?? "No insights found.";
-        // Kita bisa format statistik untuk ditampilkan juga
-        final Map<String, dynamic> stats = response['statistics'] ?? {};
-        final String formattedStats =
-            "Total Pendapatan: ${stats['total_revenue']?.toStringAsFixed(0) ?? 'N/A'}\\n"
-            "Produk Terlaris (Jumlah): ${stats['best_selling_by_quantity']?['name'] ?? 'N/A'}\\n"
-            "Produk Pendapatan Tertinggi: ${stats['highest_revenue_product']?['name'] ?? 'N/A'}";
-
-        final String finalAnswer = "$insights\\n\\n--- Ringkasan Statistik ---\\n$formattedStats";
-
-        setState(() {
-          _messages.add(ChatMessage(text: finalAnswer, isUser: false));
-        });
-
-      } else {
-        // Pengguna membatalkan pemilihan file
-        print("File picking cancelled.");
-      }
-    } catch (e) {
-      setState(() {
-        _messages.add(ChatMessage(text: "Error saat menganalisis file: ${e.toString()}", isUser: false));
-      });
-    } finally {
-      setState(() { _isLoading = false; });
-    }
-  }
-
-  // --- UI Building ---
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('UMKM-Go AI'),
-        backgroundColor: Colors.blueAccent,
-      ),
-      body: Column(
-        children: [
-          // Chat messages area
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(8.0),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-                return _buildChatBubble(message);
+    // 1. Sediakan BLoC ke Widget Tree menggunakan BlocProvider
+    return BlocProvider(
+      // Buat instance ChatBloc, inject ApiService
+      create: (context) => ChatBloc(apiService: ApiService()),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('UMKM-Go AI'),
+          backgroundColor: Colors.blueAccent,
+        ),
+        body: Column(
+          children: [
+            // 2. Gunakan BlocBuilder untuk membangun daftar pesan
+            Expanded(
+              child: BlocBuilder<ChatBloc, ChatState>(
+                builder: (context, state) {
+                  // Tampilkan pesan error jika state adalah ChatError
+                  if (state is ChatError && state.messages.isEmpty) {
+                    return Center(child: Text('Error: ${state.error}'));
+                  }
+                  // Tampilkan pesan "mulai percakapan" jika initial
+                  if (state.messages.isEmpty) {
+                    return const Center(child: Text('Mulai percakapan...'));
+                  }
+                  // Bangun ListView berdasarkan messages dari state saat ini
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(8.0),
+                    itemCount: state.messages.length,
+                    itemBuilder: (context, index) {
+                      final message = state.messages[index];
+                      return _buildChatBubble(message);
+                    },
+                  );
+                },
+              ),
+            ),
+            // 3. Gunakan BlocSelector untuk menampilkan loading indicator
+            BlocSelector<ChatBloc, ChatState, bool>(
+              selector: (state) => state is ChatLoading, // Hanya rebuild jika loading berubah
+              builder: (context, isLoading) {
+                return isLoading
+                    ? const Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: CircularProgressIndicator(),
+                )
+                    : const SizedBox.shrink();
               },
             ),
-          ),
-          // Loading indicator
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.all(8.0),
-              child: CircularProgressIndicator(),
-            ),
-          // Input area
-          _buildInputArea(),
-        ],
+            // 4. Input area (UI tetap sama, logic berubah)
+            const _InputArea(),
+          ],
+        ),
       ),
     );
   }
@@ -185,15 +85,57 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+}
 
-  Widget _buildInputArea() {
+class _InputArea extends StatefulWidget {
+  const _InputArea();
+
+  @override
+  State<_InputArea> createState() => _InputAreaState();
+}
+
+class _InputAreaState extends State<_InputArea> {
+  final TextEditingController _textController = TextEditingController();
+
+  void _sendMessage() {
+    final query = _textController.text;
+    if (query.isNotEmpty) {
+      context.read<ChatBloc>().add(SendTextMessageEvent(query));
+      _textController.clear();
+    }
+  }
+
+  Future<void> _pickAndAnalyzeFile() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['csv'],
+      );
+
+      if (result != null && result.files.single.bytes != null) {
+        context.read<ChatBloc>().add(AnalyzeFileEvent(result.files.single));
+      } else {
+        print("Pemilihan file dibatalkan.");
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error memilih file: $e")),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Dengarkan state loading untuk menonaktifkan tombol
+    final isLoading = context.select((ChatBloc bloc) => bloc.state is ChatLoading);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.3),
+            color: Colors.grey.withValues(alpha: 0.3),
             spreadRadius: 2,
             blurRadius: 5,
           ),
@@ -203,20 +145,20 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           IconButton(
             icon: const Icon(Icons.attach_file, color: Colors.grey),
-            onPressed: _isLoading ? null : _pickAndAnalyzeFile,
+            onPressed: isLoading ? null : _pickAndAnalyzeFile,
           ),
           Expanded(
             child: TextField(
               controller: _textController,
               decoration: const InputDecoration.collapsed(
-                hintText: 'Tanyakan sesuatu...',
+                hintText: 'Tanya Orkestrator...',
               ),
-              onSubmitted: (value) => _sendMessage(),
+              onSubmitted: isLoading ? null : (_) => _sendMessage(),
             ),
           ),
           IconButton(
             icon: const Icon(Icons.send, color: Colors.blueAccent),
-            onPressed: _isLoading ? null : _sendMessage,
+            onPressed: isLoading ? null : _sendMessage,
           ),
         ],
       ),
