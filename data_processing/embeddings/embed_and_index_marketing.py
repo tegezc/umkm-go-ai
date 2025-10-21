@@ -30,8 +30,6 @@ INDEX_NAME = "umkm_marketing_kb" # NEW index for the Marketing Knowledge Base
 EMBEDDING_MODEL = 'paraphrase-multilingual-MiniLM-L12-v2'
 EMBEDDING_DIMENSION = 384
 
-# --- Functions (reused from previous script) ---
-
 def connect_to_elasticsearch(endpoint_url: str, api_key: str) -> Elasticsearch | None:
     """Establishes a connection to the Elastic Cloud cluster via Endpoint URL."""
     print("[*] Connecting to Elasticsearch...")
