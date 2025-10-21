@@ -2,7 +2,7 @@
 # Description: Main application factory.
 
 from fastapi import FastAPI
-from .api.v1 import agent_legal, agent_marketing, agent_operational, agent_proactive, orchestrator
+from .api.v1 import agent_legal, agent_marketing, agent_operational, agent_proactive, orchestrator, agent_brand
 from fastapi.middleware.cors import CORSMiddleware
 
 def create_app() -> FastAPI:
@@ -35,6 +35,7 @@ def create_app() -> FastAPI:
     app.include_router(agent_operational.router, prefix="/api/v1/agent/operational", tags=["Operational Agent"])
     app.include_router(agent_proactive.router, prefix="/api/v1/agent/proactive", tags=["Proactive Agent"])
     app.include_router(orchestrator.router, prefix="/api/v1/orchestrator", tags=["Orchestrator"])
+    app.include_router(agent_brand.router, prefix="/api/v1/agent/brand", tags=["Brand Agent"])
     
     print("[+] Application assembled with all agent routers.")
     
