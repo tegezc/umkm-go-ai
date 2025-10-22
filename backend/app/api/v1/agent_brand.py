@@ -11,6 +11,30 @@ from app.infrastructure.database.elasticsearch_connector import es_client
 # For embedding
 from vertexai.vision_models import MultiModalEmbeddingModel, Image as VertexImage
 from vertexai.generative_models import Part, GenerationConfig  # For Gemini call
+from google.cloud import storage
+from vertexai.preview.vision_models import ImageGenerationModel
+
+GCS_BUCKET_NAME = "umkm-go-ai-logos-hackathon"
+IMAGEN_NUMBER_OF_IMAGES = 1
+
+# --- Inisialisasi Model Imagen & GCS Client ---
+try:
+    print("[*] BRAND AGENT: Loading Imagen Model...")
+    imagen_model = ImageGenerationModel.from_pretrained("imagegeneration@005") # Atau versi terbaru
+    print("[+] BRAND AGENT: Imagen Model loaded.")
+except Exception as e:
+    print(f"[!] BRAND AGENT: Failed to load Imagen model: {e}")
+    imagen_model = None
+
+try:
+    print("[*] BRAND AGENT: Initializing GCS Client...")
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(GCS_BUCKET_NAME)
+    print("[+] BRAND AGENT: GCS Client initialized.")
+except Exception as e:
+    print(f"[!] BRAND AGENT: Failed to initialize GCS client: {e}")
+    storage_client = None
+    bucket = None
 
 # --- Model Embedding Initialization
 try:
@@ -87,6 +111,46 @@ def get_image_embedding_bytes(image_bytes: bytes) -> list[float] | None:
         print(f"[!] Helper: Error getting embedding: {e}")
         return None
 
+def generate_and_upload_logo(description: str) -> Optional[str]:
+    """Generates an image using Imagen and uploads it to GCS."""
+    if not imagen_model or not bucket:
+        print("[!] Imagen or GCS not available, skipping image generation.")
+        return None
+    
+    try:
+        print(f"[*] Generating image for: '{description}'")
+        # Generate image using Imagen
+        images = imagen_model.generate_images(
+            prompt=f"Simple flat vector logo design for a small business product, based on the description: '{description}'. Minimalist, clean background.",
+            number_of_images=IMAGEN_NUMBER_OF_IMAGES,
+            aspect_ratio="1:1", # Square logo
+            output_format="png"
+        )
+        
+        if not images:
+            print("[!] Imagen returned no images.")
+            return None
+            
+        image_bytes = images[0]._image_bytes # Access the raw image data
+        
+        # Define filename and upload to GCS
+        # Kita buat nama file unik (bisa ditambah timestamp atau UUID)
+        filename = f"logo-concept-{base64.urlsafe_b64encode(description.encode()).decode()[:16]}.png"
+        blob = bucket.blob(filename)
+        
+        print(f"[*] Uploading '{filename}' to GCS bucket '{GCS_BUCKET_NAME}'...")
+        blob.upload_from_string(image_bytes, content_type="image/png")
+        
+        # --- PENTING: Jadikan file publik ---
+        blob.make_public()
+        
+        public_url = blob.public_url
+        print(f"[+] Image uploaded and public URL generated: {public_url}")
+        return public_url
+        
+    except Exception as e:
+        print(f"[!] Error during image generation or upload: {e}")
+        return None
 
 @router.post("/generate_kit", response_model=BrandAgentResponse)
 async def generate_brand_kit(
@@ -208,8 +272,9 @@ async def generate_brand_kit(
     logo_concepts_final = []
     logo_descs = brand_identity_data.get("logo_concepts_desc", [])
     for desc in logo_descs:
+        image_url = generate_and_upload_logo(desc)
         logo_concepts_final.append(LogoConcept(
-            description=desc, image_url="https://via.placeholder.com/150"))
+            description=desc, image_url=image_url))
 
    # --- Step 4: Assemble Brand Kit
     final_brand_kit = BrandKit(
