@@ -1,5 +1,6 @@
 # File: backend/app/api/v1/agent_brand.py (Final Integration)
 
+import os
 import base64
 import re
 import json
@@ -14,13 +15,16 @@ from vertexai.generative_models import Part, GenerationConfig  # For Gemini call
 from google.cloud import storage
 from vertexai.preview.vision_models import ImageGenerationModel
 
+# --- Configuration ---
+VISUAL_KB_INDEX = "umkm_visual_kb"
 GCS_BUCKET_NAME = "umkm-go-ai-logos-hackathon"
 IMAGEN_NUMBER_OF_IMAGES = 1
 
 # --- Inisialisasi Model Imagen & GCS Client ---
 try:
     print("[*] BRAND AGENT: Loading Imagen Model...")
-    imagen_model = ImageGenerationModel.from_pretrained("imagegeneration@005") # Atau versi terbaru
+    imagen_model = ImageGenerationModel.from_pretrained(
+        "imagegeneration@005")  # Atau versi terbaru
     print("[+] BRAND AGENT: Imagen Model loaded.")
 except Exception as e:
     print(f"[!] BRAND AGENT: Failed to load Imagen model: {e}")
@@ -46,8 +50,6 @@ except Exception as e:
     print(f"[!] BRAND AGENT: Failed to load embedding model: {e}")
     embedding_model = None
 
-# --- Configuration ---
-VISUAL_KB_INDEX = "umkm_visual_kb"
 
 # --- Pydantic Models
 class ImageAnalysis(BaseModel):
@@ -84,6 +86,8 @@ class BrandAgentResponse(BaseModel):
 router = APIRouter()
 
 # --- Helper Functions
+
+
 def extract_json_from_text(text: str) -> Optional[dict]:
     match = re.search(r"```json\n(.*?)\n```", text, re.DOTALL | re.IGNORECASE)
     if match:
@@ -111,46 +115,66 @@ def get_image_embedding_bytes(image_bytes: bytes) -> list[float] | None:
         print(f"[!] Helper: Error getting embedding: {e}")
         return None
 
+
 def generate_and_upload_logo(description: str) -> Optional[str]:
     """Generates an image using Imagen and uploads it to GCS."""
     if not imagen_model or not bucket:
         print("[!] Imagen or GCS not available, skipping image generation.")
         return None
-    
+
     try:
+        imagen_prompt = f"""
+        Generate a simple, flat vector logo suitable for a small business product packaging.
+        The logo should represent: '{description}'.
+        Style: Minimalist, clean lines, professional, easily recognizable.
+        Background: Plain white or transparent.
+        Do not include any text unless explicitly mentioned in the description.
+        """
+        
         print(f"[*] Generating image for: '{description}'")
         # Generate image using Imagen
         images = imagen_model.generate_images(
-            prompt=f"Simple flat vector logo design for a small business product, based on the description: '{description}'. Minimalist, clean background.",
+            prompt=imagen_prompt,
             number_of_images=IMAGEN_NUMBER_OF_IMAGES,
-            aspect_ratio="1:1", # Square logo
-            output_format="png"
+            aspect_ratio="1:1",  # Square logo
         )
-        
+
         if not images:
             print("[!] Imagen returned no images.")
             return None
-            
-        image_bytes = images[0]._image_bytes # Access the raw image data
-        
-        # Define filename and upload to GCS
-        # Kita buat nama file unik (bisa ditambah timestamp atau UUID)
-        filename = f"logo-concept-{base64.urlsafe_b64encode(description.encode()).decode()[:16]}.png"
+
+        image_bytes = None
+        try:
+             image_bytes = images[0]._image_bytes
+        except AttributeError:
+             print("[!] Warning: _image_bytes attribute not found. Trying save/load method.")
+             temp_filename = "temp_imagen_output.png"
+             images[0].save(temp_filename, include_generation_parameters=False)
+             with open(temp_filename, "rb") as f:
+                 image_bytes = f.read()
+             os.remove(temp_filename) # Hapus file sementara
+
+        if not image_bytes:
+            print("[!] Failed to get image bytes.")
+            return None
+
+        # Buat nama file unik
+        safe_desc = re.sub(r'\W+', '-', description.lower())[:30] # Nama lebih deskriptif
+        timestamp = base64.urlsafe_b64encode(os.urandom(6)).decode() # Tambah keunikan
+        filename = f"logo-concept-{safe_desc}-{timestamp}.png"
         blob = bucket.blob(filename)
-        
+
         print(f"[*] Uploading '{filename}' to GCS bucket '{GCS_BUCKET_NAME}'...")
         blob.upload_from_string(image_bytes, content_type="image/png")
-        
-        # --- PENTING: Jadikan file publik ---
-        blob.make_public()
-        
+        #blob.make_public()
         public_url = blob.public_url
-        print(f"[+] Image uploaded and public URL generated: {public_url}")
+        print(f"[+] Image uploaded: {public_url}")
         return public_url
-        
+
     except Exception as e:
         print(f"[!] Error during image generation or upload: {e}")
         return None
+
 
 @router.post("/generate_kit", response_model=BrandAgentResponse)
 async def generate_brand_kit(
