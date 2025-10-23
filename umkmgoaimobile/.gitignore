@@ -44,8 +44,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Ignore Firebase config files for security
-firebase.json
 
 # FlutterFire generated options
 lib/firebase_options.dart

@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "hackathon-460016"
+  },
+  "targets": {
+    "hackathon-460016": {
+      "hosting": {
+        "flutter-app": [
+          "umkm-go-ai-460016"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
