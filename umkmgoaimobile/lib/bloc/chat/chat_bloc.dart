@@ -9,12 +9,13 @@ part 'chat_event.dart';
 part 'chat_state.dart';
 
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
-  final ApiService apiService; // Inject ApiService
+  final ApiService apiService;
 
   ChatBloc({required this.apiService}) : super(const ChatInitial()) {
     // Register handlers for each event
     on<SendTextMessageEvent>(_onSendTextMessage);
     on<AnalyzeFileEvent>(_onAnalyzeFile);
+    on<GenerateBrandKitEvent>(_onGenerateBrandKit);
   }
 
   // --- Event Handler for Text Messages ---
@@ -23,20 +24,22 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       Emitter<ChatState> emit,
       ) async {
     // 1. Add user message and emit Loading state
-    final userMessage = ChatMessage(text: event.query, isUser: true);
-    final currentStateMessages = List<ChatMessage>.from(state.messages)..add(userMessage);
-    emit(ChatLoading(messages: currentStateMessages));
+    final userMessage = ChatMessage(text: event.query, type: MessageType.user);
+    var currentMessages = List<ChatMessage>.from(state.messages)..add(userMessage);
+
+    final loadingMessage = ChatMessage(text: "Sedang memproses...", type: MessageType.loading);
+    currentMessages.add(loadingMessage);
+    emit(ChatLoading(messages: currentMessages));
 
     try {
       // 2. Call ApiService (Orchestrator)
       final response = await apiService.askOrchestrator(event.query);
       final String agentUsed = response['agent_used'] ?? 'UNKNOWN';
 
-      List<ChatMessage> aiMessages = []; // Tampung pesan AI di sini
+      List<ChatMessage> aiMessages = [];
 
       if (agentUsed == "LEGAL" || agentUsed == "MARKETING") {
         String answer = response['answer'] ?? "No answer found.";
-        // Tambahkan sumber jika ada (contoh untuk Legal)
         if (agentUsed == "LEGAL") {
           final List<dynamic> chunks = response['retrieved_chunks'] ?? [];
           if (chunks.isNotEmpty) {
@@ -47,46 +50,40 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
           }
         }else if (agentUsed == "MARKETING") {
           answer = response['answer'] ?? "No answer found.";
-          // Optionally add logic to show article sources here
         }else { // UNKNOWN
-          answer = response['answer'] ?? "Maaf, terjadi kesalahan.";
+          answer = response['answer'] ?? "Sorry — something went wrong.";
         }
-        aiMessages.add(ChatMessage(text: answer, isUser: false));
+        aiMessages.add(ChatMessage(text: answer, type: MessageType.ai));
 
-      } else if (agentUsed == "BRAND_AGENT") { // Asumsi backend mengembalikan 'BRAND_AGENT'
+      } else if (agentUsed == "BRAND_AGENT") {
         final brandKit = response['brand_kit'];
         if (brandKit != null) {
-          // Pesan teks utama (nama, tagline, bio)
-          String brandText = "Berikut hasil analisis dan ide mereknya:\n\n"
-              "Nama: ${brandKit['suggested_names']?.join(', ')}\n"
-              "Tagline: ${brandKit['suggested_taglines']?.join(', ')}\n"
-              "Bio IG: ${brandKit['instagram_bio']}";
-          aiMessages.add(ChatMessage(text: brandText, isUser: false));
-
-          // Pesan terpisah untuk setiap konsep logo
+          String brandText = "Here are the analysis results...\n...";
+          aiMessages.add(ChatMessage(text: brandText, type: MessageType.ai));
           final List<dynamic> logoConcepts = brandKit['logo_concepts'] ?? [];
           for (var concept in logoConcepts) {
             aiMessages.add(ChatMessage(
-              text: "Konsep Logo: ${concept['description']}",
-              imageUrl: concept['image_url'], // Sertakan URL gambar
-              isUser: false,
+              text: "Logo Concept:: ${concept['description']}",
+              imageUrl: concept['image_url'],
+              type: MessageType.ai,
             ));
           }
         } else {
-          aiMessages.add(const ChatMessage(text: "Gagal memproses brand kit.", isUser: false));
+          aiMessages.add(const ChatMessage(text: "Failed to process brand kit.",type: MessageType.ai));
         }
-      } else { // UNKNOWN atau error lainnya
-        final answer = response['answer'] ?? "Maaf, terjadi kesalahan.";
-        aiMessages.add(ChatMessage(text: answer, isUser: false));
+      } else {
+        final answer = response['answer'] ?? "Sorry — something went wrong.";
+        aiMessages.add(ChatMessage(text: answer, type: MessageType.ai));
       }
 
-      // Emit Loaded state dengan semua pesan AI yang baru
-      emit(ChatLoaded(messages: List<ChatMessage>.from(currentStateMessages)..addAll(aiMessages)));
+      currentMessages.removeLast();
+      currentMessages.addAll(aiMessages);
+      emit(ChatLoaded(messages: currentMessages));
 
     } catch (e) {
       // 5. Emit Error state if something went wrong
-      final errorMessage = ChatMessage(text: "Error: ${e.toString()}", isUser: false);
-      emit(ChatError(messages: List<ChatMessage>.from(currentStateMessages)..add(errorMessage), error: e.toString()));
+      final errorMessage = ChatMessage(text: "Error: ${e.toString()}", type: MessageType.error);
+      emit(ChatError(messages: List<ChatMessage>.from(currentMessages)..add(errorMessage), error: e.toString()));
     }
   }
 
@@ -96,9 +93,12 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       Emitter<ChatState> emit,
       ) async {
     // 1. Add feedback message and emit Loading state
-    final feedbackMessage = ChatMessage(text: "Menganalisis file: ${event.file.name}...", isUser: true);
-    final currentStateMessages = List<ChatMessage>.from(state.messages)..add(feedbackMessage);
-    emit(ChatLoading(messages: currentStateMessages));
+    final feedbackMessage = ChatMessage(text: "Analyzing file: ${event.file.name}...", type: MessageType.user);
+    var currentMessages = List<ChatMessage>.from(state.messages)..add(feedbackMessage);
+    final loadingMessage = ChatMessage(text: "Analyzing...", type: MessageType.loading);
+    currentMessages.add(loadingMessage);
+    emit(ChatLoading(messages: currentMessages));
+
 
     try {
       // 2. Call ApiService
@@ -106,20 +106,79 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       final String insights = response['insights'] ?? "No insights found.";
       final Map<String, dynamic> stats = response['statistics'] ?? {};
       final String formattedStats =
-          "Total Pendapatan: ${stats['total_revenue']?.toStringAsFixed(0) ?? 'N/A'}\n"
-          "Produk Terlaris (Jumlah): ${stats['best_selling_by_quantity']?['name'] ?? 'N/A'}\n"
-          "Produk Pendapatan Tertinggi: ${stats['highest_revenue_product']?['name'] ?? 'N/A'}";
+          "Total Revenue: ${stats['total_revenue']?.toStringAsFixed(0) ?? 'N/A'}\n"
+          "Best-Selling Product (by Quantity): ${stats['best_selling_by_quantity']?['name'] ?? 'N/A'}\n"
+          "Highest Revenue Product: ${stats['highest_revenue_product']?['name'] ?? 'N/A'}";
 
-      final String finalAnswer = "$insights\n\n--- Ringkasan Statistik ---\n$formattedStats";
-      final aiMessage = ChatMessage(text: finalAnswer, isUser: false);
+      final String finalAnswer = "$insights\n\n--- Statistics Summary ---\n$formattedStats";
+      final aiMessage = ChatMessage(text: finalAnswer, type: MessageType.ai);
 
       // 3. Emit Loaded state
-      emit(ChatLoaded(messages: List<ChatMessage>.from(currentStateMessages)..add(aiMessage)));
+      currentMessages.removeLast(); // Hapus loading
+      currentMessages.add(aiMessage);
+      emit(ChatLoaded(messages: currentMessages));
 
     } catch (e) {
-      // 4. Emit Error state
-      final errorMessage = ChatMessage(text: "Error saat menganalisis file: ${e.toString()}", isUser: false);
-      emit(ChatError(messages: List<ChatMessage>.from(currentStateMessages)..add(errorMessage), error: e.toString()));
+      currentMessages.removeLast();
+      final errorMessage = ChatMessage(text: "Failed to process file: ${e.toString()}", type: MessageType.error); // Tipe Error
+      emit(ChatError(messages: List<ChatMessage>.from(currentMessages)..add(errorMessage), error: e.toString()));
+    }
+  }
+
+  Future<void> _onGenerateBrandKit(
+      GenerateBrandKitEvent event,
+      Emitter<ChatState> emit,
+      ) async {
+    final feedbackMessage = ChatMessage(
+        text: "Generating brand concept from image: ${event.imageFile.name}...",
+        type: MessageType.user); // Tipe User
+    var currentMessages = List<ChatMessage>.from(state.messages)
+      ..add(feedbackMessage);
+
+    final loadingMessage = ChatMessage(
+        text: "Creating brand concept...", type: MessageType.loading);
+    currentMessages.add(loadingMessage);
+    emit(ChatLoading(messages: currentMessages));
+
+    try {
+      final response =
+      await apiService.generateBrandKit(event.imageFile, event.businessName);
+      List<ChatMessage> aiMessages = [];
+
+      final brandKit = response['brand_kit'];
+      if (brandKit != null) {
+        String brandText = "Here are the analysis results and brand ideas:\n\n"
+            "Name: ${brandKit['suggested_names']?.join(', ')}\n"
+            "Tagline: ${brandKit['suggested_taglines']?.join(', ')}\n"
+            "Bio IG: ${brandKit['instagram_bio']}";
+        aiMessages.add(ChatMessage(text: brandText, type: MessageType.ai));
+
+        final List<dynamic> logoConcepts = brandKit['logo_concepts'] ?? [];
+        for (var concept in logoConcepts) {
+          aiMessages.add(ChatMessage(
+            text: "Logo Concept: ${concept['description']}",
+            imageUrl: concept['image_url'],
+            type: MessageType.ai,
+          ));
+        }
+      } else {
+        aiMessages.add(const ChatMessage(
+            text: "Failed to process brand kit from API response.", type: MessageType.error));
+      }
+
+      currentMessages.removeLast();
+      currentMessages.addAll(aiMessages);
+      emit(ChatLoaded(messages: currentMessages));
+
+    } catch (e) {
+
+      currentMessages.removeLast();
+      final errorMessage = ChatMessage(
+          text: "An error occurred while generating the brand kit: ${e.toString()}",
+          type: MessageType.error);
+      emit(ChatError(
+          messages: List<ChatMessage>.from(currentMessages)..add(errorMessage),
+          error: e.toString()));
     }
   }
 }

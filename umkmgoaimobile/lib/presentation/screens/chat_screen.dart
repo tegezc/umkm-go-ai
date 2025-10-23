@@ -11,9 +11,7 @@ class ChatScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Sediakan BLoC ke Widget Tree menggunakan BlocProvider
     return BlocProvider(
-      // Buat instance ChatBloc, inject ApiService
       create: (context) => ChatBloc(apiService: ApiService()),
       child: Scaffold(
         appBar: AppBar(
@@ -22,19 +20,15 @@ class ChatScreen extends StatelessWidget {
         ),
         body: Column(
           children: [
-            // 2. Gunakan BlocBuilder untuk membangun daftar pesan
             Expanded(
               child: BlocBuilder<ChatBloc, ChatState>(
                 builder: (context, state) {
-                  // Tampilkan pesan error jika state adalah ChatError
                   if (state is ChatError && state.messages.isEmpty) {
                     return Center(child: Text('Error: ${state.error}'));
                   }
-                  // Tampilkan pesan "mulai percakapan" jika initial
                   if (state.messages.isEmpty) {
-                    return const Center(child: Text('Mulai percakapan...'));
+                    return const Center(child: Text('Start conversation...'));
                   }
-                  // Bangun ListView berdasarkan messages dari state saat ini
                   return ListView.builder(
                     padding: const EdgeInsets.all(8.0),
                     itemCount: state.messages.length,
@@ -46,9 +40,8 @@ class ChatScreen extends StatelessWidget {
                 },
               ),
             ),
-            // 3. Gunakan BlocSelector untuk menampilkan loading indicator
             BlocSelector<ChatBloc, ChatState, bool>(
-              selector: (state) => state is ChatLoading, // Hanya rebuild jika loading berubah
+              selector: (state) => state is ChatLoading,
               builder: (context, isLoading) {
                 return isLoading
                     ? const Padding(
@@ -58,7 +51,6 @@ class ChatScreen extends StatelessWidget {
                     : const SizedBox.shrink();
               },
             ),
-            // 4. Input area (UI tetap sama, logic berubah)
             const _InputArea(),
           ],
         ),
@@ -67,28 +59,60 @@ class ChatScreen extends StatelessWidget {
   }
 
   Widget _buildChatBubble(ChatMessage message) {
+    final alignment = message.type == MessageType.user
+        ? Alignment.centerRight
+        : Alignment.centerLeft;
+
+    Color bubbleColor;
+    Color textColor;
+    switch (message.type) {
+      case MessageType.user:
+        bubbleColor = Colors.blue[300]!;
+        textColor = Colors.white;
+        break;
+      case MessageType.ai:
+        bubbleColor = Colors.grey[200]!;
+        textColor = Colors.black87;
+        break;
+      case MessageType.loading:
+        bubbleColor = Colors.grey[100]!;
+        textColor = Colors.grey[600]!;
+        break;
+      case MessageType.error:
+        bubbleColor = Colors.red[100]!;
+        textColor = Colors.red[700]!;
+        break;
+    }
+
     return Align(
-      alignment: message.isUser ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: alignment,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 5.0, horizontal: 8.0),
         padding: const EdgeInsets.all(12.0),
         decoration: BoxDecoration(
-          color: message.isUser ? Colors.blue[300] : Colors.grey[200],
+          color: bubbleColor,
           borderRadius: BorderRadius.circular(15.0),
         ),
         //  Teks + image ---
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start, // Ratakan teks ke kiri
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Selalu tampilkan teks
             Text(
               message.text,
               style: TextStyle(
-                color: message.isUser ? Colors.white : Colors.black87,
+                color: textColor,
               ),
             ),
+            if (message.type == MessageType.loading)
+              const Padding(
+                padding: EdgeInsets.only(top: 8.0),
+                child: SizedBox(
+                    width: 15,
+                    height: 15,
+                    child: CircularProgressIndicator(strokeWidth: 2)),
+              ),
             // Tampilkan gambar HANYA jika imageUrl ada DAN tidak kosong
-            if (message.imageUrl != null && message.imageUrl!.isNotEmpty)
+            if (message.imageUrl != null && message.imageUrl!.isNotEmpty && message.type == MessageType.ai)
               Padding(
                 padding: const EdgeInsets.only(top: 8.0), // Beri jarak
                 child: Image.network(
@@ -99,7 +123,7 @@ class ChatScreen extends StatelessWidget {
                     return const Center(child: CircularProgressIndicator());
                   },
                   errorBuilder: (context, error, stackTrace) {
-                    return const Text(' Gagal memuat gambar', style: TextStyle(color: Colors.red));
+                    return const Text(' Failed to load image', style: TextStyle(color: Colors.red));
                   },
                 ),
               ),
@@ -133,7 +157,10 @@ class _InputAreaState extends State<_InputArea> {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['csv'],
+        withData: true,
       );
+
+      if (!mounted) return;
 
       if (result != null && result.files.single.bytes != null) {
         context.read<ChatBloc>().add(AnalyzeFileEvent(result.files.single));
@@ -141,15 +168,37 @@ class _InputAreaState extends State<_InputArea> {
         print("Pemilihan file dibatalkan.");
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error memilih file: $e")),
+        SnackBar(content: Text("Error selecting file")),
+      );
+    }
+  }
+
+  Future<void> _pickAndGenerateBrandKit() async {
+    try {
+      // Filter HANYA untuk Gambar
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+      );
+      if (!mounted) return;
+
+      final file = result?.files.single;
+      if (file != null) {
+        // Kirim event BARU ke BLoC
+        context.read<ChatBloc>().add(GenerateBrandKitEvent(file));
+      } else {
+        print("Pemilihan gambar dibatalkan.");
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error selecting image")),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Dengarkan state loading untuk menonaktifkan tombol
     final isLoading = context.select((ChatBloc bloc) => bloc.state is ChatLoading);
 
     return Container(
@@ -170,11 +219,16 @@ class _InputAreaState extends State<_InputArea> {
             icon: const Icon(Icons.attach_file, color: Colors.grey),
             onPressed: isLoading ? null : _pickAndAnalyzeFile,
           ),
+          IconButton(
+            icon: const Icon(Icons.camera_alt, color: Colors.grey),
+            tooltip: "Generate brand ideas from product image", // Tambah tooltip
+            onPressed: isLoading ? null : _pickAndGenerateBrandKit, // Panggil fungsi gambar
+          ),
           Expanded(
             child: TextField(
               controller: _textController,
               decoration: const InputDecoration.collapsed(
-                hintText: 'Tanya Orkestrator...',
+                hintText: 'Ask Orchestrator...',
               ),
               onSubmitted: isLoading ? null : (_) => _sendMessage(),
             ),

@@ -1,16 +1,20 @@
 // File: mobile_app/lib/bloc/chat/chat_state.dart
 part of 'chat_bloc.dart';
 
+enum MessageType { user, ai, loading, error }
+
 // Simple class to hold message data (same as before)
 class ChatMessage extends Equatable {
   final String text;
-  final bool isUser;
+  final MessageType type;
   final String? imageUrl;
 
-  const ChatMessage({required this.text, required this.isUser, this.imageUrl});
+  const ChatMessage({required this.text, required this.type, this.imageUrl});
 
   @override
-  List<Object?> get props => [text, isUser];
+  List<Object?> get props => [text, type];
+
+  bool get isUserMessage => type == MessageType.user;
 }
 
 abstract class ChatState extends Equatable {

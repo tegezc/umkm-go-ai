@@ -6,8 +6,10 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
 class ApiService {
-  static const String _baseUrl =
-      "https://umkm-go-ai-api-102863217534.asia-southeast1.run.app/api/v1";
+  // static const String _baseUrl =
+  //     "https://umkm-go-ai-api-102863217534.asia-southeast1.run.app/api/v1";
+  // static const String _baseUrl = "http://10.0.2.2:8000/api/v1";
+  static const String _baseUrl = "http://127.0.0.1:8000/api/v1";
 
   Future<Map<String, dynamic>> askOrchestrator(String query) async {
     final url = Uri.parse('$_baseUrl/orchestrator/query');
@@ -115,6 +117,56 @@ class ApiService {
       }
     } catch (e) {
       print('Error in analyzeSalesData: $e');
+      throw Exception('Failed to connect to the server: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> generateBrandKit(PlatformFile imageFile, String businessName) async {
+    // Target endpoint Agen Merek
+    final url = Uri.parse('$_baseUrl/agent/brand/generate_kit');
+
+    try {
+      var request = http.MultipartRequest('POST', url);
+
+      // Tambahkan nama bisnis sebagai field
+      request.fields['business_name'] = businessName;
+
+      // 1. Dapatkan PATH file di cache (misal: /.../cache/file.tmp)
+      final String imagePath = imageFile.path!;
+
+      // 2. Dapatkan NAMA file ASLI (misal: "foto_liburan.jpg")
+      final String originalFilename = imageFile.name;
+
+      // 3. Dapatkan EKSTENSI file ASLI (misal: "jpg")
+      final String extension = imageFile.extension ?? 'jpeg'; // Fallback
+
+      // Gunakan fromPath (hemat memori) TAPI isi parameter lainnya
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file', // Nama field backend
+          imagePath, // Path ke file di cache
+
+          // WAJIB: Beri tahu nama file aslinya
+          filename: originalFilename,
+
+          // WAJIB: Set Content-Type secara manual
+          contentType: MediaType('image', extension),
+        ),
+      );
+
+      print("Sending image '$imagePath' to Brand Agent...");
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        return json.decode(utf8.decode(response.bodyBytes));
+      } else {
+        final errorBody = json.decode(utf8.decode(response.bodyBytes));
+        // Berikan pesan error yang lebih spesifik
+        throw Exception('Failed to generate brand kit. Status: ${response.statusCode}, Detail: ${errorBody['detail']}');
+      }
+    } catch (e) {
+      print('Error in generateBrandKit: $e');
       throw Exception('Failed to connect to the server: $e');
     }
   }

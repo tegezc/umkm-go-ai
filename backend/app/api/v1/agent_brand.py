@@ -249,6 +249,7 @@ async def generate_brand_kit(
     Analyze the attached image of a product for a new UMKM business named "{business_name}".
     Based on the visual information in the image AND considering the visual inspiration context provided below, provide a full brand kit.
     {inspiration_context}
+    **The entire JSON response, including all string values within it, MUST be in English.**
     Your response MUST be in the following JSON format. Do not add any text outside the JSON block.
     ```json
     {{

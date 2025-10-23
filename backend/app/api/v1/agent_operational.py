@@ -74,7 +74,7 @@ async def analyze_sales_data(file: UploadFile = File(...)):
     prompt = f"""
     You are a friendly and insightful business analyst for an Indonesian SME (UMKM).
     Based on the following summary of sales data, provide 2-3 key insights and one actionable recommendation.
-    Use a simple, encouraging, and easy-to-understand Indonesian language.
+    **Respond ONLY in English.** Use clear, easy-to-understand language.
 
     SALES DATA SUMMARY:
     {json.dumps(statistics, indent=2, ensure_ascii=False)}

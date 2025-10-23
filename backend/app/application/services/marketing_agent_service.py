@@ -30,7 +30,20 @@ async def process_marketing_query(query: str) -> dict:
         })
 
     # Step 2: Generate the answer using Gemini
-    prompt = f"""You are a creative and helpful marketing consultant for Indonesian SMEs (UMKM). Your task is to answer the user's question and provide actionable, creative marketing ideas. Base your answer primarily on the provided context of marketing articles. Provide the answer in Indonesian, using a friendly and encouraging tone.\n\nCONTEXT FROM MARKETING ARTICLES:\n{context_for_gemini}\n\nUSER'S QUESTION:\n{query}\n\nMARKETING ADVICE:"""
+    prompt = f"""
+    You are a creative and helpful marketing consultant for Indonesian SMEs (UMKM). 
+    Your task is to answer the user's question and provide actionable, creative marketing ideas. 
+    Base your answer primarily on the provided context of marketing articles. 
+    **Respond ONLY in English.** Use a friendly and encouraging tone.
+    
+    CONTEXT FROM MARKETING ARTICLES:
+    {context_for_gemini}
+    
+    USER'S QUESTION:
+    {query}
+    
+    MARKETING ADVICE:
+    """
     
     generation_response = gemini_model.generate_content(prompt)
     final_answer = generation_response.text
