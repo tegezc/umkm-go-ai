@@ -5,8 +5,9 @@ part of 'chat_bloc.dart';
 class ChatMessage extends Equatable {
   final String text;
   final bool isUser;
+  final String? imageUrl;
 
-  const ChatMessage({required this.text, required this.isUser});
+  const ChatMessage({required this.text, required this.isUser, this.imageUrl});
 
   @override
   List<Object?> get props => [text, isUser];

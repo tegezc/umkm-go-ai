@@ -31,29 +31,57 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       // 2. Call ApiService (Orchestrator)
       final response = await apiService.askOrchestrator(event.query);
       final String agentUsed = response['agent_used'] ?? 'UNKNOWN';
-      String finalAnswer = "";
 
-      // 3. Format the AI response based on the agent used
-      if (agentUsed == "LEGAL") {
-        finalAnswer = response['answer'] ?? "No answer found.";
-        final List<dynamic> chunks = response['retrieved_chunks'] ?? [];
-        if (chunks.isNotEmpty) {
-          finalAnswer += "\n\n--- Sumber Dokumen ---";
-          for (var chunk in chunks.take(2)) { // Show top 2 sources
-            finalAnswer += "\n- ${chunk['chunk_id']} (${chunk['chapter_title']})";
+      List<ChatMessage> aiMessages = []; // Tampung pesan AI di sini
+
+      if (agentUsed == "LEGAL" || agentUsed == "MARKETING") {
+        String answer = response['answer'] ?? "No answer found.";
+        // Tambahkan sumber jika ada (contoh untuk Legal)
+        if (agentUsed == "LEGAL") {
+          final List<dynamic> chunks = response['retrieved_chunks'] ?? [];
+          if (chunks.isNotEmpty) {
+            answer += "\n\n--- Sumber Dokumen ---";
+            for (var chunk in chunks.take(2)) {
+              answer += "\n- ${chunk['chunk_id']} (${chunk['chapter_title']})";
+            }
           }
+        }else if (agentUsed == "MARKETING") {
+          answer = response['answer'] ?? "No answer found.";
+          // Optionally add logic to show article sources here
+        }else { // UNKNOWN
+          answer = response['answer'] ?? "Maaf, terjadi kesalahan.";
         }
-      } else if (agentUsed == "MARKETING") {
-        finalAnswer = response['answer'] ?? "No answer found.";
-        // Optionally add logic to show article sources here
-      } else { // UNKNOWN
-        finalAnswer = response['answer'] ?? "Maaf, terjadi kesalahan.";
+        aiMessages.add(ChatMessage(text: answer, isUser: false));
+
+      } else if (agentUsed == "BRAND_AGENT") { // Asumsi backend mengembalikan 'BRAND_AGENT'
+        final brandKit = response['brand_kit'];
+        if (brandKit != null) {
+          // Pesan teks utama (nama, tagline, bio)
+          String brandText = "Berikut hasil analisis dan ide mereknya:\n\n"
+              "Nama: ${brandKit['suggested_names']?.join(', ')}\n"
+              "Tagline: ${brandKit['suggested_taglines']?.join(', ')}\n"
+              "Bio IG: ${brandKit['instagram_bio']}";
+          aiMessages.add(ChatMessage(text: brandText, isUser: false));
+
+          // Pesan terpisah untuk setiap konsep logo
+          final List<dynamic> logoConcepts = brandKit['logo_concepts'] ?? [];
+          for (var concept in logoConcepts) {
+            aiMessages.add(ChatMessage(
+              text: "Konsep Logo: ${concept['description']}",
+              imageUrl: concept['image_url'], // Sertakan URL gambar
+              isUser: false,
+            ));
+          }
+        } else {
+          aiMessages.add(const ChatMessage(text: "Gagal memproses brand kit.", isUser: false));
+        }
+      } else { // UNKNOWN atau error lainnya
+        final answer = response['answer'] ?? "Maaf, terjadi kesalahan.";
+        aiMessages.add(ChatMessage(text: answer, isUser: false));
       }
 
-      final aiMessage = ChatMessage(text: finalAnswer, isUser: false);
-
-      // 4. Emit Loaded state with the updated message list
-      emit(ChatLoaded(messages: List<ChatMessage>.from(currentStateMessages)..add(aiMessage)));
+      // Emit Loaded state dengan semua pesan AI yang baru
+      emit(ChatLoaded(messages: List<ChatMessage>.from(currentStateMessages)..addAll(aiMessages)));
 
     } catch (e) {
       // 5. Emit Error state if something went wrong

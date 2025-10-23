@@ -76,11 +76,34 @@ class ChatScreen extends StatelessWidget {
           color: message.isUser ? Colors.blue[300] : Colors.grey[200],
           borderRadius: BorderRadius.circular(15.0),
         ),
-        child: Text(
-          message.text,
-          style: TextStyle(
-            color: message.isUser ? Colors.white : Colors.black87,
-          ),
+        //  Teks + image ---
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start, // Ratakan teks ke kiri
+          children: [
+            // Selalu tampilkan teks
+            Text(
+              message.text,
+              style: TextStyle(
+                color: message.isUser ? Colors.white : Colors.black87,
+              ),
+            ),
+            // Tampilkan gambar HANYA jika imageUrl ada DAN tidak kosong
+            if (message.imageUrl != null && message.imageUrl!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0), // Beri jarak
+                child: Image.network(
+                  message.imageUrl!,
+                  // Tambahkan placeholder loading dan error handling
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const Center(child: CircularProgressIndicator());
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Text(' Gagal memuat gambar', style: TextStyle(color: Colors.red));
+                  },
+                ),
+              ),
+          ],
         ),
       ),
     );
