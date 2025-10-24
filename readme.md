@@ -54,6 +54,7 @@ Our application features several specialized AI agents working together under an
     * Triggered daily by **Cloud Scheduler**.
     * Scans external data sources (currently configured for **RSS Feeds** like Antara News Bisnis) for keywords like "UMKM," "peluang," "bantuan," etc.
     * Sends findings directly to the user's device via **Firebase Cloud Messaging (FCM)** push notifications.
+    * **NOTE:** Due to the time constraints of the hackathon, the current deployment utilizes a hardcoded FCM device token within the backend (`agent_proactive.py`) for demonstration purposes. As a result, push notifications triggered by Cloud Scheduler will only be sent to the pre-configured device during judging.
 
 6.  **📊 Operational Agent:**
     * Analyzes simple sales data uploaded by the user (CSV format).
