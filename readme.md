@@ -115,7 +115,7 @@ This project heavily utilizes technologies from both **Google Cloud** and **Elas
 
 1.  **Clone Repository:**
     ```bash
-    git clone [Your-Repo-URL]
+    git clone https://github.com/tegezc/umkm-go-ai.git
     cd umkm-go-ai
     ```
 2.  **Backend Setup:**
