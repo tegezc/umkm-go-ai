@@ -106,7 +106,7 @@ This project heavily utilizes technologies from both **Google Cloud** and **Elas
 * **Video:** [https://youtu.be/SbNlPSbSK0A]
 * **Try the Web App:** [https://umkm-go-ai-460016.web.app/]
 * **Source Code:** [(https://github.com/tegezc/umkm-go-ai)]
-* **Hackathon:** https://ai-accelerate.devpost.com/
+* **Hackathon:** https://devpost.com/software/umkm-go-ai
 ---
 
 ## ⚙️ Getting Started (Local Development)
