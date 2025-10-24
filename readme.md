@@ -103,8 +103,7 @@ This project heavily utilizes technologies from both **Google Cloud** and **Elas
 
 ## 🚀 Demo & Access
 
-* **Landing Page:** [Link-to-Your-Deployed-Landing-Page]
-    * _Contains the video demo, link to try the web app, and link to source code._
+* **Video:** [https://youtu.be/SbNlPSbSK0A]
 * **Try the Web App:** [https://umkm-go-ai-460016.web.app/]
 * **Source Code:** [(https://github.com/tegezc/umkm-go-ai)]
 * **Hackathon:** https://ai-accelerate.devpost.com/

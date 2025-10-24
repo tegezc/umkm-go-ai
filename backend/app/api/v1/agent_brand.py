@@ -129,7 +129,10 @@ def generate_and_upload_logo(description: str) -> Optional[str]:
         Style: Minimalist, clean lines, professional, easily recognizable.
         Background: Plain white or transparent.
         Do not include any text unless explicitly mentioned in the description.
+        **simple 2D illustration, minimalist vector graphic, solid colors, iconic, highly stylized, not photorealistic, geometric shapes.** 
         """
+        
+        print(f"[*] Generating image for: '{description}'")
         
         print(f"[*] Generating image for: '{description}'")
         # Generate image using Imagen
