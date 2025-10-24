@@ -1,3 +1,8 @@
+<div align="center">
+
+![UMKM-GO-AI](assets/images/icon.png)
+
+</div>
 # UMKM-Go AI 🚀
 
 **Proactive AI Business Partner for Indonesian SMEs**
@@ -100,9 +105,9 @@ This project heavily utilizes technologies from both **Google Cloud** and **Elas
 
 * **Landing Page:** [Link-to-Your-Deployed-Landing-Page]
     * _Contains the video demo, link to try the web app, and link to source code._
-* **Try the Web App:** [Link-to-Your-Deployed-Flutter-Web-App]
-* **Source Code:** [Link-to-Your-GitHub-Repository]
-
+* **Try the Web App:** [https://umkm-go-ai-460016.web.app/]
+* **Source Code:** [(https://github.com/tegezc/umkm-go-ai)]
+* **Hackathon:** https://ai-accelerate.devpost.com/
 ---
 
 ## ⚙️ Getting Started (Local Development)
@@ -130,6 +135,7 @@ This project heavily utilizes technologies from both **Google Cloud** and **Elas
     * Run `flutter pub get`.
     * Run the app on an emulator or web: `flutter run`.
 
+    **Note on Proactive Agent:** The Proactive Agent's scheduled scans (`/api/v1/agent/proactive/scan_opportunities`) are triggered by **Cloud Scheduler** in the deployed Google Cloud environment. For local testing, you can trigger this endpoint manually (e.g., using the `/docs` page or `curl`).
 ---
 
 ## 📜 License
