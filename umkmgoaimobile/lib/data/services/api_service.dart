@@ -1,15 +1,16 @@
 // File: mobile_app/lib/data/services/api_service.dart
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
 class ApiService {
-  // static const String _baseUrl =
-  //     "https://umkm-go-ai-api-102863217534.asia-southeast1.run.app/api/v1";
+  static const String _baseUrl =
+      "https://umkm-go-ai-api-102863217534.asia-southeast1.run.app/api/v1";
   // static const String _baseUrl = "http://10.0.2.2:8000/api/v1";
-  static const String _baseUrl = "http://127.0.0.1:8000/api/v1";
+  //static const String _baseUrl = "http://127.0.0.1:8000/api/v1";
 
   Future<Map<String, dynamic>> askOrchestrator(String query) async {
     final url = Uri.parse('$_baseUrl/orchestrator/query');
@@ -138,21 +139,31 @@ class ApiService {
       final String originalFilename = imageFile.name;
 
       // 3. Dapatkan EKSTENSI file ASLI (misal: "jpg")
-      final String extension = imageFile.extension ?? 'jpeg'; // Fallback
+      final String extension = imageFile.extension ?? 'jpeg';
 
-      // Gunakan fromPath (hemat memori) TAPI isi parameter lainnya
-      request.files.add(
-        await http.MultipartFile.fromPath(
-          'file', // Nama field backend
-          imagePath, // Path ke file di cache
+      final contentType = MediaType('image', extension);
 
-          // WAJIB: Beri tahu nama file aslinya
+      http.MultipartFile multipartFile;
+
+      if (kIsWeb) {
+        print("Sending image from WEB (bytes)...");
+        multipartFile = http.MultipartFile.fromBytes(
+          'file',
+          imageFile.bytes!,
           filename: originalFilename,
+          contentType: contentType,
+        );
+      }else{
+        print("Sending image from NATIVE (path)...");
+        multipartFile = await http.MultipartFile.fromPath(
+          'file', // Nama field backend
+          imagePath, // Gunakan path
+          filename: originalFilename,
+          contentType: contentType,
+        );
+      }
 
-          // WAJIB: Set Content-Type secara manual
-          contentType: MediaType('image', extension),
-        ),
-      );
+      request.files.add(multipartFile);
 
       print("Sending image '$imagePath' to Brand Agent...");
       final streamedResponse = await request.send();

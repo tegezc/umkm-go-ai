@@ -1,5 +1,6 @@
 // File: mobile_app/lib/presentation/screens/chat_screen.dart
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:file_picker/file_picker.dart';
@@ -112,12 +113,12 @@ class ChatScreen extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 2)),
               ),
             // Tampilkan gambar HANYA jika imageUrl ada DAN tidak kosong
-            if (message.imageUrl != null && message.imageUrl!.isNotEmpty && message.type == MessageType.ai)
+            if (message.imageUrl != null && message.imageUrl!.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.only(top: 8.0), // Beri jarak
+                padding: const EdgeInsets.only(top: 8.0),
                 child: Image.network(
                   message.imageUrl!,
-                  // Tambahkan placeholder loading dan error handling
+                  width: 200,
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
                     return const Center(child: CircularProgressIndicator());
@@ -185,7 +186,17 @@ class _InputAreaState extends State<_InputArea> {
 
       final file = result?.files.single;
       if (file != null) {
-        // Kirim event BARU ke BLoC
+
+        if (kIsWeb && file.bytes == null) {
+          print("Pemilihan file di Web gagal, bytes tidak ada.");
+          return;
+        }
+        // Di Native, 'path' harus ada.
+        if (!kIsWeb && file.path == null) {
+          print("Pemilihan file di Native gagal, path tidak ada.");
+          return;
+        }
+
         context.read<ChatBloc>().add(GenerateBrandKitEvent(file));
       } else {
         print("Pemilihan gambar dibatalkan.");

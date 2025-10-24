@@ -1,0 +1,11 @@
+[
+  {
+    "origin": [
+      "http://localhost:8000",
+      "https://umkm-go-ai-460016.web.app/"
+    ],
+    "method": ["GET"],
+    "responseHeader": ["Content-Type"],
+    "maxAgeSeconds": 3600
+  }
+]

@@ -27,7 +27,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     final userMessage = ChatMessage(text: event.query, type: MessageType.user);
     var currentMessages = List<ChatMessage>.from(state.messages)..add(userMessage);
 
-    final loadingMessage = ChatMessage(text: "Sedang memproses...", type: MessageType.loading);
+    final loadingMessage = ChatMessage(text: "Processing...", type: MessageType.loading);
     currentMessages.add(loadingMessage);
     emit(ChatLoading(messages: currentMessages));
 
@@ -43,7 +43,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         if (agentUsed == "LEGAL") {
           final List<dynamic> chunks = response['retrieved_chunks'] ?? [];
           if (chunks.isNotEmpty) {
-            answer += "\n\n--- Sumber Dokumen ---";
+            answer += "\n\n--- Document Source ---";
             for (var chunk in chunks.take(2)) {
               answer += "\n- ${chunk['chunk_id']} (${chunk['chapter_title']})";
             }
@@ -131,7 +131,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
       ) async {
     final feedbackMessage = ChatMessage(
         text: "Generating brand concept from image: ${event.imageFile.name}...",
-        type: MessageType.user); // Tipe User
+        type: MessageType.user,imageUrl: event.imageFile.path); // Tipe User
     var currentMessages = List<ChatMessage>.from(state.messages)
       ..add(feedbackMessage);
 

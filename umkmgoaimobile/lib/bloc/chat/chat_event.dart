@@ -31,7 +31,7 @@ class AnalyzeFileEvent extends ChatEvent {
 // Event triggered when the user selects an image for brand generation
 class GenerateBrandKitEvent extends ChatEvent {
   final PlatformFile imageFile;
-  final String businessName; // Kita bisa tambahkan input nama bisnis nanti
+  final String businessName;
 
   const GenerateBrandKitEvent(this.imageFile, {this.businessName = "Usaha Saya"});
 

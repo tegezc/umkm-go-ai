@@ -62,4 +62,4 @@ async def orchestrate_query(request: OrchestratorQueryRequest):
             raise HTTPException(status_code=500, detail=str(e))
         
     else: # UNKNOWN
-        return {"answer": "Maaf, saya belum bisa menjawab pertanyaan tersebut. Anda bisa bertanya tentang aspek hukum atau marketing untuk UMKM.", "agent_used": "UNKNOWN"}
+        return {"answer": "Sorry, I’m not able to answer that question yet. You can ask about legal or marketing aspects for SMEs.", "agent_used": "UNKNOWN"}
